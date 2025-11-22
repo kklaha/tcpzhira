@@ -1,81 +1,50 @@
-﻿#include <iostream>
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <string>  // ВАЖНО: без этого getline может не работать!
-#pragma comment(lib, "Ws2_32.lib")
-
+#include <iostream>  
+#include <winsock2.h> 
+#include <windows.h> 
+#include <string> 
+#pragma comment (lib, "Ws2_32.lib")  
 using namespace std;
-
-#define PORT 1234
-#define BUF_SIZE 64
-
+#define SRV_PORT 1234  
+#define BUF_SIZE 64  
+const string QUEST = "Who are you?\n";
 int main() {
-    //  Инициализация Winsock
-    WSADATA wsa;
-    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
-        cout << "WSA failed\n";
-        return 1;
-    }
-
-    //  Создаём сокет
-    SOCKET s = socket(AF_INET, SOCK_STREAM, 0);
-    if (s == INVALID_SOCKET) {
-        cout << "Socket failed\n";
-        WSACleanup();
-        return 1;
-    }
-
-    //  Настраиваем свой адрес (на каком порту слушать)
-    sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = INADDR_ANY;  // Принимать с любого интерфейса
-    addr.sin_port = htons(PORT);
-    if (bind(s, (sockaddr*)&addr, sizeof(addr)) == SOCKET_ERROR) {
-        cout << "Bind failed\n";
-        closesocket(s);
-        WSACleanup();
-        return 1;
-    }
-    if (listen(s, 1) == SOCKET_ERROR) {
-        cout << "Listen failed\n";
-        closesocket(s);
-        WSACleanup();
-        return 1;
-    }
-    cout << "Server is listening on port " << PORT << "...\n";
-    sockaddr_in client;
-    int client_len = sizeof(client);
-    SOCKET client_sock = accept(s, (sockaddr*)&client, &client_len);
-    if (client_sock == INVALID_SOCKET) {
-        cout << "Accept failed\n";
-        closesocket(s);
-        WSACleanup();
-        return 1;
-    }
-    cout << "Client connected!\n";
-    char buf[BUF_SIZE];
-    string response;
-    //  Основной цикл общения
-    while (true) {
-        const char* question = "Who are you? ";
-        send(client_sock, question, strlen(question), 0);
-
-        int bytes = recv(client_sock, buf, BUF_SIZE - 1, 0);
-        if (bytes <= 0) break;  // Клиент отключился или ошибка
-        buf[bytes] = '\0';  // Завершаем строку нулём
-
-        cout << "Client said: " << buf << endl;
-
-        if (string(buf) == "Bye") break;
-
-        cout << "You (server): ";
-        getline(cin, response);  // Считываем ответ от оператора сервера
-    }
-    cout << "Goodbye!\n";
-    // Закрываем всё
-    closesocket(client_sock);   // Закрываем соединение с клиентом
-    closesocket(s);             // Закрываем основной сокет сервера
-    WSACleanup();               // Завершаем работу с Winsock
+	char buff[1024];
+	if (WSAStartup(0x0202, (WSADATA*)&buff[0]))
+	{
+		cout << "Error WSAStartup \n" << WSAGetLastError();   
+		return -1;
+	}
+	SOCKET s, s_new;
+	int from_len;
+	char buf[BUF_SIZE] = { 0 };
+	sockaddr_in sin, from_sin;
+	s = socket(AF_INET, SOCK_STREAM, 0);
+	sin.sin_family = AF_INET;
+	sin.sin_addr.s_addr = 0;
+	sin.sin_port = htons(SRV_PORT);
+	bind(s, (sockaddr*)&sin, sizeof(sin));
+	string msg, msg1;
+	listen(s, 3);
+	while (1) {
+		from_len = sizeof(from_sin);
+		s_new = accept(s, (sockaddr*)&from_sin, &from_len);
+		cout << "new connected client! " << endl;
+		msg = QUEST;
+		while (1) {
+			send(s_new, (char*)&msg[0], msg.size(), 0);
+			from_len = recv(s_new, (char*)buf, BUF_SIZE, 0);
+			buf[from_len] = 0;
+			msg1 = (string)buf;
+			cout << msg1 << endl;;
+			if (msg1 == "Bye") break;
+			getline(cin, msg);
+		}
+		cout << "client is lost";
+		closesocket(s_new);
+	}
+	return 0;
+}
 
     return 0;
+
 }
