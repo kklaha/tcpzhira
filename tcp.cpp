@@ -60,5 +60,7 @@ int main() {
     cout << "exit to infinity" << endl;
     cin.get();   
     closesocket(s); 
+    WSACleanup();
     return 0;  
 }
+
